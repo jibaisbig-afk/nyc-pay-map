@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>纽约怎么付钱 · 支付地图</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #F7F6F2; color: #2C2C2A; font-size: 16px; line-height: 1.6; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 14px 40px; }
+  header { padding: 22px 0 10px; }
+  h1 { font-size: 26px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: #888780; font-size: 14px; }
+  .cards { display: flex; gap: 10px; overflow-x: auto; padding: 12px 0; -webkit-overflow-scrolling: touch; }
+  .card { flex: 0 0 215px; border-radius: 16px; padding: 14px 16px; font-size: 15px; line-height: 1.5; }
+  .card b { display: block; font-size: 17px; margin-bottom: 4px; font-weight: 600; }
+  .c1 { background: #E1F5EE; color: #085041; }
+  .c2 { background: #FAEEDA; color: #633806; }
+  .c3 { background: #EEEDFE; color: #3C3489; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 6px 0 4px; -webkit-overflow-scrolling: touch; }
+  .chip { flex: 0 0 auto; border: 1.5px solid #D3D1C7; background: #fff; border-radius: 999px; padding: 8px 16px; font-size: 15px; color: #444441; }
+  .chip.on { background: #2C2C2A; color: #fff; border-color: #2C2C2A; }
+  .fchip.on { background: #0F6E56; border-color: #0F6E56; }
+  #map { height: 62vh; min-height: 420px; border-radius: 16px; border: 1px solid #E3E1D9; margin-top: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 12px 4px; font-size: 14px; color: #5F5E5A; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: -120%; transition: bottom .25s ease; background: #fff; border-radius: 20px 20px 0 0; box-shadow: 0 -6px 30px rgba(0,0,0,.18); padding: 18px 20px calc(24px + env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto; z-index: 1000; }
+  .sheet.show { bottom: 0; }
+  .sheet h3 { margin: 0 0 2px; font-size: 21px; font-weight: 600; padding-right: 40px; }
+  .sheet .area { font-size: 13px; color: #888780; margin-bottom: 10px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0 10px; }
+  .bg { font-size: 14px; padding: 5px 12px; border-radius: 999px; font-weight: 500; }
+  .ok { background: #E1F5EE; color: #085041; }
+  .no { background: #FCEBEB; color: #791F1F; }
+  .sheet .note { font-size: 15.5px; line-height: 1.65; color: #2C2C2A; background: #F7F6F2; border-radius: 12px; padding: 10px 14px; }
+  .nav-btn { display: inline-block; margin-top: 12px; background: #1F4E79; color: #fff; text-decoration: none; font-size: 15px; padding: 9px 18px; border-radius: 999px; }
+  .close { position: absolute; top: 12px; right: 14px; width: 32px; height: 32px; border-radius: 50%; background: #F1EFE8; border: none; font-size: 17px; color: #444441; }
+  h2 { font-size: 20px; margin: 28px 0 10px; font-weight: 600; }
+  .fees { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .fee { background: #fff; border: 1px solid #E3E1D9; border-radius: 14px; padding: 14px 16px; }
+  .fee b { font-size: 16.5px; font-weight: 600; }
+  .fee p { margin: 4px 0 0; font-size: 15px; color: #5F5E5A; }
+  .memo { background: #fff; border: 1px solid #E3E1D9; border-radius: 14px; padding: 6px 16px; }
+  .memo div { padding: 11px 0; border-bottom: 1px solid #F1EFE8; font-size: 16.5px; }
+  .memo div:last-child { border-bottom: none; }
+  footer { margin-top: 26px; font-size: 12.5px; color: #B4B2A9; line-height: 1.7; }
+  @media (min-width: 600px) { .fees { grid-template-columns: 1fr 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>🗽 纽约怎么付钱</h1>
+  <div class="sub">给伯伯的支付地图 · 41 个真实地点 · 数据核实于 2026 年 6 月 12 日</div>
+</header>
+
+<div class="cards">
+  <div class="card c1"><b>💳 主流：拍一下</b>手机 Apple Pay 或银行卡，往机器上一贴就付完，到处都能用</div>
+  <div class="card c2"><b>🏷️ 价签不含税</b>结账时加约 8.875% 消费税，跟用什么付钱没关系</div>
+  <div class="card c3"><b>📱 扫码是配角</b>美国没有全民扫码，但药店、华人区、游客区都有惊喜</div>
+</div>
+
+<div class="chips" id="chips">
+  <button class="chip on" data-r="all">全部</button>
+  <button class="chip" data-r="mh">曼哈顿</button>
+  <button class="chip" data-r="fl">法拉盛</button>
+  <button class="chip" data-r="bk">布鲁克林</button>
+  <button class="chip" data-r="nj">新泽西</button>
+  <button class="chip" data-r="wb">奥特莱斯</button>
+</div>
+<div class="chips" id="fchips">
+  <button class="chip fchip on" data-f="all">全部店</button>
+  <button class="chip fchip" data-f="qr">🟢 能扫支付宝/微信/二维码</button>
+  <button class="chip fchip" data-f="quirk">🟠 有怪癖的店</button>
+</div>
+
+<div id="map"></div>
+<div class="legend">
+  <span><span class="dot" style="background:#1D9E75"></span>能扫码（支付宝/微信/App码）</span>
+  <span><span class="dot" style="background:#378ADD"></span>主流都收（拍手机/刷卡）</span>
+  <span><span class="dot" style="background:#EF9F27"></span>有怪癖，注意</span>
+</div>
+
+<h2>💸 账单上的三个"加钱"</h2>
+<div class="fees">
+  <div class="fee"><b>消费税 8.875%</b><p>价签外另加，政府收的，现金也一样。买生鲜食品、110 美元以下的衣服鞋反而免税；新泽西买衣服全免税</p></div>
+  <div class="fee"><b>小费 18–22%</b><p>坐下吃饭必给，是服务员的工资。咖啡外带可以不给。海底捞火锅也要给！</p></div>
+  <div class="fee"><b>刷卡费 3–4%</b><p>部分餐馆小店对信用卡加收（法律要求标明），现金常有折扣</p></div>
+</div>
+
+<h2>📌 伯伯速记五条</h2>
+<div class="memo">
+  <div>1️⃣ 手机 Apple Pay 拍一下哪都能付，<b>不收任何额外费</b></div>
+  <div>2️⃣ 地铁进站直接拿手机拍闸机，3 美元，一周满 12 次后免费坐</div>
+  <div>3️⃣ 看到账单比价签贵，是<b>消费税</b>，不是被坑</div>
+  <div>4️⃣ 微信/支付宝能用的地方：法拉盛和八大道华人店（剪头发都能扫）、Walgreens 药店、第五大道部分大牌</div>
+  <div>5️⃣ 两头怪店都要防：杂货店"刷卡低消 10 刀"，洋基球场反过来<b>不收现金</b>；沃尔玛不收 Apple Pay，Costco 只收 Visa，Peter Luger 牛排馆不收信用卡</div>
+</div>
+
+<footer>
+  本页为《纽约商户收款方式调研》（2026-06）的地图版摘录。完整版另含：收款方式全景、各业态收款系统、POS 与收单格局、费率与税、扫码玩家盘点、合规门槛预研等章节。<br><br>
+  数据来源：MTA、Port Authority、Costco、CVS/PayPal、Walgreens/支付宝、亚马逊、NYC TLC、洋基队官方公告及 2025–2026 年行业统计，检索核实于 2026-06-12。商家位置为示意（个别小店精确到街区），营业信息可能变化。v4
+</footer>
+</div>
+
+<div class="sheet" id="sheet">
+  <button class="close" onclick="hideSheet()">✕</button>
+  <h3 id="s-name"></h3>
+  <div class="area" id="s-area"></div>
+  <div class="badges" id="s-badges"></div>
+  <div class="note" id="s-note"></div>
+  <a class="nav-btn" id="s-nav" href="#" target="_blank">🧭 导航去这里</a>
+</div>
+
+<script>
+const G = '#1D9E75', B = '#378ADD', O = '#EF9F27';
+const SPOTS = [
+  {n:"Apple Store 第五大道旗舰店", a:"曼哈顿 · 中城", lat:40.7639, lng:-73.9729, e:"📱", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1],["扫码",0]],
+   note:"玻璃立方体那家，24小时营业。全美 94% 零售商都收 Apple Pay，这里是'拍一下就走'的示范店。"},
+  {n:"Gucci / LV（第五大道）", a:"曼哈顿 · 第五大道", lat:40.7625, lng:-73.9735, e:"👜", c:G,
+   p:[["Amex/Visa",1],["银联卡",1],["支付宝(部分店)",1],["现金",1]],
+   note:"980 美元的鞋结账约 1067 美元（加税 8.875%）。美国没有退税！银联普遍能刷；部分旗舰店为中国游客接了支付宝。"},
+  {n:"Uniqlo 优衣库旗舰店", a:"曼哈顿 · 第五大道", lat:40.7621, lng:-73.9746, e:"👕", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"重点：单件 110 美元以下的衣服在纽约免消费税——在这买基本款等于自动'打 92 折'，比奢侈品店划算。"},
+  {n:"Saks Fifth Avenue 百货", a:"曼哈顿 · 第五大道", lat:40.7585, lng:-73.9776, e:"🛍️", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["银联卡",1]],
+   note:"老牌百货，主流方式全收。圣诞橱窗很有名，顺路看。"},
+  {n:"Macy's 先驱广场总店", a:"曼哈顿 · 34街", lat:40.7508, lng:-73.9890, e:"🛍️", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["银联卡",1]],
+   note:"世界最大百货店之一。游客中心有中文服务，退换货宽松。"},
+  {n:"Walgreens（时代广场店）", a:"曼哈顿 · 时代广场", lat:40.7560, lng:-73.9866, e:"💊", c:G,
+   p:[["支付宝",1],["Apple Pay",1],["刷卡",1]],
+   note:"全美 7000 家店收支付宝（2019 年起，专为中国客人）。买水、药、日用品可以直接掏支付宝。"},
+  {n:"CVS 药妆店（中城多家）", a:"曼哈顿 · 中城", lat:40.7574, lng:-73.9847, e:"💊", c:G,
+   p:[["Venmo/PayPal 扫码",1],["Apple Pay",1],["刷卡",1]],
+   note:"全美 8200 店收银台能扫 Venmo/PayPal 付款码——美国唯一全国铺开的扫码零售商。"},
+  {n:"Whole Foods（哥伦布圆环店）", a:"曼哈顿 · 中央公园西南角", lat:40.7686, lng:-73.9820, e:"🥬", c:B,
+   p:[["手掌支付",1],["Apple Pay",1],["刷卡",1]],
+   note:"亚马逊旗下，最科幻：注册后手掌悬空一扫就走（全美 500+ 店都有了）。生鲜免税，买菜常常'没税'。"},
+  {n:"Trader Joe's（联合广场店）", a:"曼哈顿 · 联合广场", lat:40.7353, lng:-73.9905, e:"🥬", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"美国人最爱的平价超市，排队快、店员友好，主流支付全收。"},
+  {n:"Target（先驱广场店）", a:"曼哈顿 · 34街", lat:40.7487, lng:-73.9879, e:"🎯", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"美国版'大型综超'。装它的 Target Circle App 自动打折，自助结账拍手机 10 秒走人。"},
+  {n:"Costco（东哈莱姆店）", a:"曼哈顿 · 东117街", lat:40.7972, lng:-73.9370, e:"🛒", c:O,
+   p:[["Visa 信用卡",1],["其他信用卡",0],["Apple Pay(仅Visa)",1],["借记卡/现金",1]],
+   note:"怪癖：信用卡只收 Visa（和花旗的独家协议）。Apple Pay 里绑的不是 Visa 信用卡也刷不了。要会员卡。"},
+  {n:"B&H 摄影器材城", a:"曼哈顿 · 34街九大道", lat:40.7536, lng:-73.9966, e:"📷", c:O,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"全球摄影爱好者圣地，主流支付都收。怪癖在营业时间：犹太老板，周六安息日全店关门，周五下午也早关，去之前查好。"},
+  {n:"星巴克烘焙工坊（切尔西）", a:"曼哈顿 · 第九大道", lat:40.7421, lng:-74.0048, e:"☕", c:G,
+   p:[["App 储值码",1],["Apple Pay",1],["刷卡",1]],
+   note:"星巴克 App 储值条码是美国最成功的商家自营扫码。屏幕会跳小费选项，咖啡可以不给。"},
+  {n:"Chelsea Market 美食市集", a:"曼哈顿 · 切尔西", lat:40.7424, lng:-74.0061, e:"🦞", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金(部分摊)",1]],
+   note:"室内美食市集，龙虾卷有名。摊位清一色 Square/Toast 平板：拍手机 → 转屏选小费，体验一条龙。"},
+  {n:"韩国城烤肉一条街", a:"曼哈顿 · 32街", lat:40.7479, lng:-73.9869, e:"🍖", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"深夜开到两三点。注意：有些店账单已自动加 18% 服务费（service charge），看清楚别再给一遍小费！"},
+  {n:"曼哈顿中国城（坚尼路）", a:"曼哈顿 · Canal St", lat:40.7170, lng:-73.9986, e:"🏮", c:G,
+   p:[["现金",1],["微信/支付宝(部分店)",1],["刷卡(部分)",1]],
+   note:"老华侨地盘，比法拉盛更'现金社会'。部分手信店、餐馆贴微信/支付宝码。买东西用现金还能讲价。"},
+  {n:"Nike SoHo 旗舰店", a:"曼哈顿 · SoHo", lat:40.7242, lng:-73.9979, e:"👟", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["App自助结账",1]],
+   note:"潮牌街区代表。可以用 Nike App 扫货架二维码自助下单，店员只管递鞋。"},
+  {n:"Eataly 意大利食品广场", a:"曼哈顿 · 熨斗大厦旁", lat:40.7421, lng:-73.9897, e:"🍝", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"边逛边吃的意大利市集，主流全收。堂食区记得小费，零售区不用——同一栋楼两套规矩。"},
+  {n:"时代广场地铁站（OMNY）", a:"曼哈顿 · 42街", lat:40.7553, lng:-73.9869, e:"🚇", c:B,
+   p:[["Apple Pay 拍闸机",1],["非接银行卡",1],["现金",0]],
+   note:"手机拍闸机 3 美元进站，无任何附加费。同一手机一周满 12 次（35 美元）后免费。纸质 MetroCard 已于 2025 年底停售。"},
+  {n:"万豪 Marquis 酒店", a:"曼哈顿 · 时代广场", lat:40.7587, lng:-73.9860, e:"🏨", c:O,
+   p:[["信用卡(必须)",1],["现金当押金",0]],
+   note:"入住刷信用卡预授权：房费＋每晚 50–200 美元押金，退房自动多退少不补。房费另有约 15% 酒店税费。没信用卡住店寸步难行。"},
+  {n:"中央车站出租车站", a:"曼哈顿 · 42街", lat:40.7527, lng:-73.9772, e:"🚕", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"黄出租后排屏幕直接拍手机付，屏上选小费 20/25/30%。法律强制必收卡且禁止刷卡加价。"},
+  {n:"街头热狗/Halal 餐车", a:"曼哈顿 · 53街MoMA旁", lat:40.7614, lng:-73.9776, e:"🌭", c:O,
+   p:[["现金",1],["刷卡(部分)",1],["Apple Pay(部分)",1]],
+   note:"现金为王。部分车装了 Square 小读卡器。给整钱，找零慢。"},
+  {n:"洋基球场", a:"布朗克斯", lat:40.8296, lng:-73.9262, e:"⚾", c:O,
+   p:[["刷卡/Apple Pay",1],["现金",0]],
+   note:"反向怪癖：全场不收现金！票房、餐饮、商店只收卡和手机。带现金的去'反向ATM'机器换成预付卡才能花。跟楼下杂货店正好相反。"},
+  {n:"JFK 机场轻轨 AirTrain", a:"皇后区 · JFK机场", lat:40.6446, lng:-73.7797, e:"✈️", c:B,
+   p:[["拍卡/手机(OMNY)",1],["现金",0]],
+   note:"出机场坐轻轨接地铁，闸机同样拍卡/手机：原价 $8.75，2025 年起有半价促销 $4.25。机场里店铺基本都'无现金化'了。"},
+  {n:"新世界商城美食广场", a:"法拉盛 · 罗斯福大道", lat:40.7596, lng:-73.8290, e:"🍜", c:G,
+   p:[["现金",1],["微信/支付宝(部分摊)",1],["刷卡(部分)",1]],
+   note:"全美最像国内的地方。美食广场现金为主，不少摊位贴微信/支付宝码，普通话畅通。"},
+  {n:"GM 美发沙龙", a:"法拉盛 · 缅街一带", lat:40.7598, lng:-73.8276, e:"💈", c:G,
+   p:[["微信",1],["支付宝",1],["现金",1],["刷卡",1]],
+   note:"晚辈亲测：剪头发直接扫微信/支付宝，纯中国店，唠嗑无障碍。法拉盛很多理发店、按摩店都这样——人民币结算圈的海外分圈。（位置示意）"},
+  {n:"海底捞（法拉盛店）", a:"法拉盛 · Prince St", lat:40.7593, lng:-73.8334, e:"🍲", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["小费(要给!)",1]],
+   note:"跟国内最大区别：美国海底捞也要给 15–18% 小费！刷卡拍手机都行，微信支付宝以店内告示为准。"},
+  {n:"香港超市（缅街店）", a:"法拉盛 · Main St", lat:40.7626, lng:-73.8290, e:"🛒", c:B,
+   p:[["刷卡",1],["Apple Pay",1],["现金",1]],
+   note:"华人大超市，老干妈、火锅底料都有。生鲜免税，主流支付全收。"},
+  {n:"H Mart 韩国超市（缅街）", a:"法拉盛 · Main St", lat:40.7589, lng:-73.8312, e:"🥬", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"亚洲食材大超市，主流支付全收，生鲜免税。"},
+  {n:"法拉盛奶茶店/小馆子", a:"法拉盛 · 缅街一带", lat:40.7580, lng:-73.8297, e:"🧋", c:G,
+   p:[["微信/支付宝(很常见)",1],["现金",1],["刷卡",1]],
+   note:"华人商圈很多店接微信/支付宝（华人收单通道），有的店现金价更便宜，留意小字。"},
+  {n:"Sky View 购物中心", a:"法拉盛 · College Point Blvd", lat:40.7556, lng:-73.8425, e:"🏬", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"法拉盛的美式大商场（Target、BJ's 都在），跟缅街小店是两个世界：这边全是拍手机，那边全是现金和微信。"},
+  {n:"Peter Luger 百年牛排馆", a:"布鲁克林 · 威廉斯堡", lat:40.7098, lng:-73.9622, e:"🥩", c:O,
+   p:[["信用卡",0],["现金",1],["美国借记卡",1],["自家卡",1]],
+   note:"1887 年开业，至今不收信用卡（官网确认）！只收现金、美国借记卡、支票和自家会员卡。去之前先备好现金。"},
+  {n:"Williamsburg 独立咖啡店", a:"布鲁克林 · 威廉斯堡", lat:40.7170, lng:-73.9560, e:"☕", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"文艺街区标配 Square 平板收银＋翻转小费屏。纽约市法律要求实体店必须收现金。"},
+  {n:"八大道（布鲁克林华人区）", a:"布鲁克林 · 日落公园", lat:40.6395, lng:-74.0065, e:"🏮", c:G,
+   p:[["现金",1],["微信(部分店)",1],["刷卡(部分)",1]],
+   note:"闽粤移民聚集区，比法拉盛更'现金社会'。部分店收微信，讲福州话最好使。买菜便宜量大。"},
+  {n:"Time Out Market（DUMBO）", a:"布鲁克林 · 大桥下", lat:40.7037, lng:-73.9890, e:"📸", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",0]],
+   note:"看曼哈顿大桥的网红机位旁，美食城全场基本无现金，拍手机就行。拍照排队比付钱久。"},
+  {n:"American Dream 超级商场", a:"新泽西 · East Rutherford", lat:40.8093, lng:-74.0676, e:"🎢", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"北美第二大商场（带室内滑雪场）。重点：新泽西买衣服鞋子免消费税，比纽约市便宜 8.875%！"},
+  {n:"Mitsuwa 日本超市", a:"新泽西 · Edgewater", lat:40.8203, lng:-73.9750, e:"🍱", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"哈德逊河对岸看曼哈顿天际线最美的日本超市，主流支付全收。新泽西消费税 6.625%，比纽约低。"},
+  {n:"99 Ranch 大华超市", a:"新泽西 · Hackensack", lat:40.9046, lng:-74.0326, e:"🛒", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"全美最大华人连锁超市，国货齐全。停车免费、量大便宜，开车采购一周伙食的首选。（位置示意）"},
+  {n:"Walmart（North Bergen）", a:"新泽西 · 88街", lat:40.8030, lng:-74.0160, e:"🛒", c:O,
+   p:[["Apple Pay",0],["自家扫码(Walmart Pay)",1],["刷卡",1],["现金",1]],
+   note:"怪癖大户：2026 年仍拒收 Apple Pay，想用手机付只能装它自家 App 扫收银台二维码。另外纽约市内一家沃尔玛都没有，最近的都在新泽西。"},
+  {n:"Jersey Gardens 奥特莱斯", a:"新泽西 · Elizabeth", lat:40.6614, lng:-74.1690, e:"👟", c:B,
+   p:[["Apple Pay",1],["刷卡",1],["现金",1]],
+   note:"离市区最近的奥莱（纽瓦克机场旁边），新泽西衣服免税，回国前最后扫货点。"},
+  {n:"Woodbury Common 奥特莱斯", a:"纽约上州 · Central Valley", lat:41.3275, lng:-74.1257, e:"👜", c:G,
+   p:[["刷卡",1],["Apple Pay",1],["银联卡",1],["支付宝(视品牌)",1]],
+   note:"中国游客第一大客群的名牌折扣村，有中文导购和换汇服务。大巴一小时直达，支付宝是否能用看各品牌柜台。"}
+];
+
+const map = L.map('map', {tap: true}).setView([40.73, -73.93], 10);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+}).addTo(map);
+
+const cluster = L.markerClusterGroup({
+  maxClusterRadius: 42,
+  disableClusteringAtZoom: 14,
+  showCoverageOnHover: false,
+  iconCreateFunction: c => L.divIcon({
+    className: '',
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid #5F5E5A;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#2C2C2A;box-shadow:0 2px 6px rgba(0,0,0,.25)">${c.getChildCount()}</div>`,
+    iconSize: [36,36], iconAnchor: [18,18]
+  })
+});
+map.addLayer(cluster);
+
+const sheet = document.getElementById('sheet');
+function hideSheet(){ sheet.classList.remove('show'); }
+map.on('click', hideSheet);
+
+function showSpot(s){
+  document.getElementById('s-name').textContent = s.e + ' ' + s.n;
+  document.getElementById('s-area').textContent = s.a;
+  document.getElementById('s-badges').innerHTML = s.p.map(([t,ok]) =>
+    `<span class="bg ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${t}</span>`).join('');
+  document.getElementById('s-note').textContent = s.note;
+  document.getElementById('s-nav').href =
+    'https://maps.apple.com/?ll=' + s.lat + ',' + s.lng + '&q=' + encodeURIComponent(s.n);
+  sheet.classList.add('show');
+}
+
+const markers = SPOTS.map(s => {
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="width:34px;height:34px;border-radius:50%;background:#fff;border:3px solid ${s.c};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25)">${s.e}</div>`,
+    iconSize: [34,34], iconAnchor: [17,17]
+  });
+  const m = L.marker([s.lat, s.lng], {icon}).on('click', () => showSpot(s));
+  return {m, s};
+});
+
+function applyFilter(f){
+  cluster.clearLayers();
+  markers.forEach(({m, s}) => {
+    if (f === 'all' || (f === 'qr' && s.c === G) || (f === 'quirk' && s.c === O)) cluster.addLayer(m);
+  });
+}
+applyFilter('all');
+
+const VIEWS = {
+  all: [[40.73, -73.93], 10],
+  mh: [[40.7560, -73.9800], 13],
+  fl: [[40.7589, -73.8320], 15],
+  bk: [[40.6800, -73.9800], 12],
+  nj: [[40.7900, -74.0600], 11],
+  wb: [[41.3275, -74.1257], 13]
+};
+document.getElementById('chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  document.querySelectorAll('#chips .chip').forEach(c => c.classList.remove('on'));
+  b.classList.add('on');
+  const [center, zoom] = VIEWS[b.dataset.r];
+  hideSheet();
+  map.flyTo(center, zoom, {duration: 0.8});
+});
+document.getElementById('fchips').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  document.querySelectorAll('#fchips .chip').forEach(c => c.classList.remove('on'));
+  b.classList.add('on');
+  hideSheet();
+  applyFilter(b.dataset.f);
+});
+</script>
+</body>
+</html>
